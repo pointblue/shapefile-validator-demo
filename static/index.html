@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shapefile Validator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            padding: 30px;
+            text-align: center;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .upload-area {
+            border: 3px dashed #e0e0e0;
+            border-radius: 15px;
+            padding: 60px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area:hover {
+            border-color: #4facfe;
+            background: rgba(79, 172, 254, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .upload-area.dragover {
+            border-color: #4facfe;
+            background: rgba(79, 172, 254, 0.1);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #4facfe;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            font-size: 0.9rem;
+            color: #999;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .file-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .validate-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: none;
+            margin: 20px auto;
+            min-width: 200px;
+        }
+
+        .validate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .validate-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4facfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .results-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .results-header.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .results-header.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .results-content {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .checklist {
+            background: #fff;
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 30px;
+            border: 1px solid #e9ecef;
+        }
+
+        .checklist h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .checklist ul {
+            list-style: none;
+        }
+
+        .checklist li {
+            padding: 8px 0;
+            color: #666;
+            position: relative;
+            padding-left: 25px;
+        }
+
+        .checklist li:before {
+            content: "✓";
+            color: #28a745;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        .reset-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .reset-btn:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .upload-area {
+                padding: 40px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗺️ Shapefile Validator</h1>
+            <p>Upload your ZIP archive containing shapefiles for validation</p>
+        </div>
+        
+        <div class="content">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Drop your ZIP file here or click to browse</div>
+                <div class="upload-hint">Maximum file size: 50MB</div>
+                <input type="file" id="fileInput" accept=".zip" />
+            </div>
+            
+            <div class="file-info" id="fileInfo">
+                <div class="file-name" id="fileName"></div>
+                <div class="file-size" id="fileSize"></div>
+            </div>
+            
+            <button class="validate-btn" id="validateBtn">
+                🔍 Validate Shapefile
+            </button>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div>Validating your shapefile...</div>
+            </div>
+            
+            <div class="results" id="results">
+                <div class="results-header" id="resultsHeader">
+                    <span id="resultsIcon"></span>
+                    <span id="resultsTitle"></span>
+                </div>
+                <div class="results-content" id="resultsContent"></div>
+                <button class="reset-btn" id="resetBtn">Upload Another File</button>
+            </div>
+            
+            <div class="checklist">
+                <h3>Validation Checklist</h3>
+                <ul>
+                    <li>All required files (.shp, .shx, .dbf, .prj) are present</li>
+                    <li>Files are in a ZIP archive (not individual files)</li>
+                    <li>Coordinate system is WGS84/EPSG:4326</li>
+                    <li>Coordinates are in decimal degrees</li>
+                    <li>No 3D (Z) or measured (M) geometry types</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ShapefileValidator {
+            constructor() {
+                this.uploadArea = document.getElementById('uploadArea');
+                this.fileInput = document.getElementById('fileInput');
+                this.fileInfo = document.getElementById('fileInfo');
+                this.fileName = document.getElementById('fileName');
+                this.fileSize = document.getElementById('fileSize');
+                this.validateBtn = document.getElementById('validateBtn');
+                this.loading = document.getElementById('loading');
+                this.results = document.getElementById('results');
+                this.resultsHeader = document.getElementById('resultsHeader');
+                this.resultsIcon = document.getElementById('resultsIcon');
+                this.resultsTitle = document.getElementById('resultsTitle');
+                this.resultsContent = document.getElementById('resultsContent');
+                this.resetBtn = document.getElementById('resetBtn');
+                this.selectedFile = null;
+                
+                this.initializeEventListeners();
+            }
+
+            initializeEventListeners() {
+                // File input events
+                this.uploadArea.addEventListener('click', () => this.fileInput.click());
+                this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e.target.files[0]));
+                
+                // Drag and drop events
+                this.uploadArea.addEventListener('dragover', (e) => this.handleDragOver(e));
+                this.uploadArea.addEventListener('dragleave', (e) => this.handleDragLeave(e));
+                this.uploadArea.addEventListener('drop', (e) => this.handleDrop(e));
+                
+                // Button events
+                this.validateBtn.addEventListener('click', () => this.validateFile());
+                this.resetBtn.addEventListener('click', () => this.resetForm());
+            }
+
+            handleDragOver(e) {
+                e.preventDefault();
+                this.uploadArea.classList.add('dragover');
+            }
+
+            handleDragLeave(e) {
+                e.preventDefault();
+                this.uploadArea.classList.remove('dragover');
+            }
+
+            handleDrop(e) {
+                e.preventDefault();
+                this.uploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    this.handleFileSelect(files[0]);
+                }
+            }
+
+            handleFileSelect(file) {
+                if (!file) return;
+                
+                if (!file.name.toLowerCase().endsWith('.zip')) {
+                    alert('Please select a ZIP file containing your shapefile.');
+                    return;
+                }
+                
+                if (file.size > 50 * 1024 * 1024) { // 50MB limit
+                    alert('File size exceeds 50MB limit. Please choose a smaller file.');
+                    return;
+                }
+                
+                this.selectedFile = file;
+                this.displayFileInfo(file);
+                this.showValidateButton();
+                this.hideResults();
+            }
+
+            displayFileInfo(file) {
+                this.fileName.textContent = file.name;
+                this.fileSize.textContent = this.formatFileSize(file.size);
+                this.fileInfo.style.display = 'block';
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            showValidateButton() {
+                this.validateBtn.style.display = 'block';
+                this.validateBtn.disabled = false;
+            }
+
+            hideResults() {
+                this.results.style.display = 'none';
+            }
+
+            async validateFile() {
+                if (!this.selectedFile) return;
+                
+                this.showLoading();
+                
+                const formData = new FormData();
+                formData.append('file', this.selectedFile);
+                
+                try {
+                    const response = await fetch('/validate', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    // Parse the JSON response regardless of HTTP status
+                    const result = await response.json();
+                    
+                    // Always display the results, whether success or failure
+                    this.displayResults(result);
+                    
+                } catch (error) {
+                    console.error('Validation error:', error);
+                    this.displayError(`Network error: ${error.message}. Please check your connection and try again.`);
+                } finally {
+                    this.hideLoading();
+                }
+            }
+
+            showLoading() {
+                this.validateBtn.style.display = 'none';
+                this.loading.style.display = 'block';
+                this.hideResults();
+            }
+
+            hideLoading() {
+                this.loading.style.display = 'none';
+            }
+
+            displayResults(result) {
+                // Show results section
+                this.results.style.display = 'block';
+                
+                // Set header based on validation result
+                if (result.valid) {
+                    this.resultsHeader.className = 'results-header success';
+                    this.resultsIcon.textContent = '✅ ';
+                    this.resultsTitle.textContent = 'Validation Passed!';
+                } else {
+                    this.resultsHeader.className = 'results-header error';
+                    this.resultsIcon.textContent = '❌ ';
+                    this.resultsTitle.textContent = 'Validation Failed';
+                }
+                
+                // Display detailed results
+                this.resultsContent.textContent = result.report || 'No detailed report available.';
+                
+                // Scroll to results
+                this.results.scrollIntoView({ behavior: 'smooth' });
+            }
+
+            displayError(message) {
+                this.results.style.display = 'block';
+                this.resultsHeader.className = 'results-header error';
+                this.resultsIcon.textContent = '❌ ';
+                this.resultsTitle.textContent = 'Error';
+                this.resultsContent.textContent = message;
+            }
+
+            resetForm() {
+                this.selectedFile = null;
+                this.fileInput.value = '';
+                this.fileInfo.style.display = 'none';
+                this.validateBtn.style.display = 'none';
+                this.hideResults();
+                this.hideLoading();
+            }
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            new ShapefileValidator();
+        });
+
+        // Demo mode - simulate validation results
+        // REMOVED: This was causing conflicting messages in production
+        // The frontend now only works with the actual Flask backend
+    </script>
+</body>
+</html>

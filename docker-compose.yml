@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  shapefile-validator:
+    build: .
+    container_name: shapefile-validator
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount uploads directory for persistence (optional)
+      - ./uploads:/app/uploads
+      # Mount logs directory for persistence
+      - ./logs:/app/logs
+    environment:
+      - FLASK_ENV=production
+      - FLASK_SECRET_KEY=docker-development-key-change-in-production
+      - MAX_FILE_SIZE=52428800
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add nginx for production-like setup
+  nginx:
+    image: nginx:alpine
+    container_name: shapefile-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./static:/usr/share/nginx/html/static:ro
+    depends_on:
+      - shapefile-validator
+    restart: unless-stopped
+    profiles:
+      - production
+
+networks:
+  default:
+    name: shapefile-network

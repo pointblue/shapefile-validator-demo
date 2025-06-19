@@ -1,0 +1,18 @@
+# Python dependencies for Shapefile Validator Docker container
+
+# Web framework
+Flask==2.3.2
+Werkzeug==2.3.6
+
+# WSGI server for production
+gunicorn==21.2.0
+
+# Geospatial libraries
+GDAL==3.4.3
+
+# Utilities
+python-dateutil==2.8.2
+
+# Optional: For enhanced functionality
+flask-compress==1.13
+flask-cors==4.0.0
